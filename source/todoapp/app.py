@@ -9,7 +9,6 @@ app.config[
 ] = 'postgresql://postgres:postgres@localhost:5432/todoapp'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
 migrate = Migrate(app, db)
 
 
@@ -27,6 +26,7 @@ class Todo(db.Model):
 def create_todo():
     error = False
     body = {}
+
     try:
         description = request.get_json()['description']
         todo = Todo(description=description)
@@ -39,15 +39,31 @@ def create_todo():
         print(sys.exc_info())
     finally:
         db.session.close()
+
     if error:
         abort(400)
     if not error:
         return jsonify(body)
 
 
+@app.route('/todos/<todo_id>/set-completed', methods=['POST'])
+def set_completed_todo(todo_id):
+    try:
+        completed = request.get_json()['completed']
+        todo = Todo.query.get(todo_id)
+        todo.completed = completed
+        db.session.commit()
+    except:
+        db.session.rollback()
+    finally:
+        db.session.close()
+
+    return redirect(url_for('index'))
+
+
 @app.route('/')
 def index():
-    data = Todo.query.all()
+    data = Todo.query.order_by('id').all()
     return render_template('index.html', data=data)
 
 
